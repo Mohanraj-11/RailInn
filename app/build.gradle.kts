@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.gms.google.services)
+
 
 }
 
@@ -14,7 +16,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.traincheckinapp"
+        applicationId = "com.example.traincheckinapp.ui.theme"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -41,6 +43,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
 
 }
@@ -78,6 +85,14 @@ dependencies {
     implementation (libs.androidx.material.icons.extended.v140)
     implementation(libs.androidx.games.activity)
     implementation(libs.androidx.appcompat)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation (libs.google.firebase.auth.ktx.v2101) // Check for the latest version
+    implementation (libs.play.services.auth)
+    implementation(libs.firebase.auth) // Check for the latest version
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.google.firebase.analytics)
+
 
     // Testing libraries
     testImplementation(libs.junit)

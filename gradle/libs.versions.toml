@@ -8,7 +8,9 @@ biometricVersion = "1.1.0"
 converterGson = "2.9.0"
 exoplayer = "2.19.1"
 firebaseAuthKtx = "23.1.0"
+firebaseBom = "33.8.0"
 foundation = "1.7.6"
+googleFirebaseAuthKtx = "21.0.1"
 gson = "2.10.1"
 kotlin = "2.0.0"
 coreKtx = "1.10.1"
@@ -29,6 +31,7 @@ materialIconsExtendedVersion = "1.4.0"
 navigationCompose = "2.8.5"
 okhttp = "4.9.3"
 okhttpVersion = "4.9.1"
+playServicesAuth = "21.3.0"
 playServicesLocation = "21.3.0"
 playServicesLocationVersion = "19.0.1"
 retrofit = "2.9.0"
@@ -49,6 +52,8 @@ animationCoreLint = "1.8.0-alpha07"
 uiToolingPreviewAndroidVersion = "1.7.6"
 gamesActivity = "3.0.5"
 appcompat = "1.7.0"
+googleGmsGoogleServices = "4.4.2"
+firebaseAuth = "23.1.0"
 
 [libraries]
 androidx-activity-compose-v170 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
@@ -64,7 +69,11 @@ androidx-material3-v100 = { module = "androidx.compose.material3:material3", ver
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 exoplayer = { module = "com.google.android.exoplayer:exoplayer", version.ref = "exoplayer" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx", version.ref = "firebaseAuthKtx" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+google-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+google-firebase-auth-ktx-v2101 = { module = "com.google.firebase:firebase-auth-ktx", version.ref = "googleFirebaseAuthKtx" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 jetbrains-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCoreVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -92,6 +101,7 @@ material3 = { module = "androidx.compose.material3:material3", version.ref = "ma
 material3-v120 = { module = "androidx.compose.material3:material3", version.ref = "androidxMaterial3Version" }
 okhttp-v493 = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp3-okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttpVersion" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 play-services-location-v1901 = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocationVersion" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
@@ -107,9 +117,11 @@ androidx-animation-core-lint = { group = "androidx.compose.animation", name = "a
 ui-tooling-preview-android = { group = "androidx.compose.ui", name = "ui-tooling-preview-android", version.ref = "uiToolingPreviewAndroidVersion" }
 androidx-games-activity = { group = "androidx.games", name = "games-activity", version.ref = "gamesActivity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
 

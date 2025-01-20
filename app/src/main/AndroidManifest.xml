@@ -34,7 +34,7 @@
         android:usesCleartextTraffic="true"
         tools:ignore="ExtraText">
 
-        <activity android:name=".MainActivity"
+        <activity android:name=".com.example.traincheckinapp.ui.theme.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -43,7 +43,7 @@
         </activity>
 
         <receiver
-            android:name=".GeofenceBroadcastReceiver"
+            android:name=".com.example.traincheckinapp.ui.theme.GeofenceBroadcastReceiver"
             android:exported="true" />
     </application>
 </manifest>
