@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "5680075517",
+    "project_id": "rail-inn-26d87",
+    "storage_bucket": "rail-inn-26d87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5680075517:android:446d694cf739d5ae896494",
+        "android_client_info": {
+          "package_name": "com.example.traincheckinapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWYlK4O0y10A_ohXfNJu-rWZa8QTJ95gM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5680075517:android:8a0d1befb9621a80896494",
+        "android_client_info": {
+          "package_name": "com.example.traincheckinapp.ui.theme"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWYlK4O0y10A_ohXfNJu-rWZa8QTJ95gM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

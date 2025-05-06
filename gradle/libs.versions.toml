@@ -1,7 +1,13 @@
 [versions]
 activityComposeVersion = "1.7.0"
+activityKtxVersion = "1.7.0"
 agp = "8.8.0"
+androidxActivityCompose = "<version>"
+androidxAppcompat = "1.3.1"
+androidxLifecycleRuntimeKtx = "<version>"
+androidxMaterial3 = "<version>"
 androidxMaterial3Version = "1.2.0"
+androidxUi = "<version>"
 animation = "1.7.6"
 biometric = "1.2.0-alpha05"
 biometricVersion = "1.1.0"
@@ -35,7 +41,10 @@ playServicesAuth = "21.3.0"
 playServicesLocation = "21.3.0"
 playServicesLocationVersion = "19.0.1"
 retrofit = "2.9.0"
+runtimeLivedata = "1.7.6"
+securityCryptoVersion = "1.1.0-alpha06"
 ui = "1.7.6"
+uiTooling = "<version>"
 uiToolingPreviewAndroid = "1.7.5"
 firebaseFirestoreKtx = "25.1.1"
 uiAndroid = "1.6.6"
@@ -57,16 +66,23 @@ firebaseAuth = "23.1.0"
 
 [libraries]
 androidx-activity-compose-v170 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
+androidx-activity-compose-vversion = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
+androidx-activity-ktx-v170 = { module = "androidx.activity:activity-ktx", version.ref = "activityKtxVersion" }
 androidx-animation = { module = "androidx.compose.animation:animation", version.ref = "animation" }
+androidx-appcompat-v131 = { module = "androidx.appcompat:appcompat", version.ref = "androidxAppcompat" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-biometric-v110 = { module = "androidx.biometric:biometric", version.ref = "biometricVersion" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
 androidx-lifecycle-runtime-ktx-v260 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
+androidx-lifecycle-runtime-ktx-vversion = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycleRuntimeKtx" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-material-icons-extended-v140 = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtendedVersion" }
 androidx-material3-v100 = { module = "androidx.compose.material3:material3", version.ref = "material3Version" }
+androidx-material3-vversion = { module = "androidx.compose.material3:material3", version.ref = "androidxMaterial3" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "runtimeLivedata" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCryptoVersion" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 exoplayer = { module = "com.google.android.exoplayer:exoplayer", version.ref = "exoplayer" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
@@ -114,10 +130,12 @@ androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplaye
 androidx-compilercommon = { group = "androidx.databinding", name = "compilerCommon", version.ref = "compilercommon" }
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-animation-core-lint = { group = "androidx.compose.animation", name = "animation-core-lint", version.ref = "animationCoreLint" }
+ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "uiTooling" }
 ui-tooling-preview-android = { group = "androidx.compose.ui", name = "ui-tooling-preview-android", version.ref = "uiToolingPreviewAndroidVersion" }
 androidx-games-activity = { group = "androidx.games", name = "games-activity", version.ref = "gamesActivity" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+ui-vversion = { module = "androidx.compose.ui:ui", version.ref = "androidxUi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

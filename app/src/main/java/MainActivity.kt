@@ -2,12 +2,13 @@ package com.example.traincheckinapp
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
-import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,8 +17,7 @@ import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +41,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -50,17 +53,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,33 +85,38 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.traincheckinapp.ui.theme.BiometricAuthStatus
+import com.example.traincheckinapp.ui.theme.biometricAuthenticator
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.Cookie
-import okhttp3.CookieJar
-import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 
 const val BASE_URL = "http://192.168.29.14:4000"
@@ -112,14 +125,16 @@ const val BASE_URL = "http://192.168.29.14:4000"
 
 
 
-class MainActivity : ComponentActivity() {
-    private val LOCATION_PERMISSION_REQUEST_CODE = 1
-    private val CAMERA_PERMISSION_REQUEST_CODE = 2 // Define a unique request code
+class MainActivity : FragmentActivity() {
+    private val locationPermissionRequestCode = 1
+    private val cameraPermissionRequestCode = 2
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestLocationPermissions()
         requestCameraPermission()
+
         setContent {
             TrainCheckInApp() // Ensure this is a Composable function
         }
@@ -127,7 +142,7 @@ class MainActivity : ComponentActivity() {
 
     private fun requestCameraPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), cameraPermissionRequestCode)
         }
     }
 
@@ -135,14 +150,14 @@ class MainActivity : ComponentActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
-            LOCATION_PERMISSION_REQUEST_CODE -> {
+            locationPermissionRequestCode -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // Location permission granted
                 } else {
                     Toast.makeText(this, "Location permission is required for this app to function.", Toast.LENGTH_SHORT).show()
                 }
             }
-            CAMERA_PERMISSION_REQUEST_CODE -> {
+            cameraPermissionRequestCode -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // Camera permission granted
                 } else {
@@ -152,10 +167,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @SuppressLint("InlinedApi")
+    @RequiresApi(Build.VERSION_CODES.Q)
+    @SuppressLint("In linedApi")
     private fun requestLocationPermissions() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION), LOCATION_PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION), locationPermissionRequestCode)
         }
     }
 }
@@ -186,34 +202,26 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 fun OTPCheckInPage(navController: NavHostController) {
     var otp by remember { mutableStateOf("") }
     var otpStatus by remember { mutableStateOf("OTP Pending...") }
-    var generatedOTP by remember { mutableStateOf("") }
     var isGeofenceEntered by remember { mutableStateOf(false) }
     var showLocationError by remember { mutableStateOf(false) }
     var isOtpSent by remember { mutableStateOf(false) } // Track if OTP has been sent
+    var isLoading by remember { mutableStateOf(false) } // Track loading state
+    var showSuccessDialog by remember { mutableStateOf(false) } // Track success dialog visibility
+
+    // New state variables for error dialog
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
     val userPhoneNumber = "+916380524885" // Replace with actual user phone number
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    // Create a CookieJar to manage cookies
-    val cookieJar = object : CookieJar {
-        private val cookieStore = HashMap<HttpUrl, MutableList<Cookie>>()
+    // Create OkHttpClient
+    val client = OkHttpClient()
 
-        override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            cookieStore[url] = cookies.toMutableList()
-        }
-
-        override fun loadForRequest(url: HttpUrl): List<Cookie> {
-            return cookieStore[url] ?: emptyList()
-        }
-    }
-
-    // Create OkHttpClient with CookieJar
-    val client = OkHttpClient.Builder()
-        .cookieJar(cookieJar)
-        .build()
-
+    // Function to send OTP
     fun sendOTP(latitude: Double, longitude: Double) {
+        isLoading = true // Start loading
         val requestBody = """{"mobile": "$userPhoneNumber", "latitude": $latitude, "longitude": $longitude}"""
             .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
@@ -221,75 +229,98 @@ fun OTPCheckInPage(navController: NavHostController) {
             .url("$BASE_URL/send-otp") // Adjust the URL as needed
             .post(requestBody)
             .build()
-        Log.d("OTPCheckIn", "Sending OTP to $userPhoneNumber with latitude: $latitude and longitude: $longitude") // Log the request details
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                otpStatus = "Failed to send OTP."
+                isLoading = false // Stop loading
+                otpStatus = "Failed to send OTP: ${e.message}"
                 Log.e("OTPCheckIn", "Error sending OTP: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
+                isLoading = false // Stop loading
                 if (response.isSuccessful) {
-                    val responseBody = response.body?.string() ?: ""
-                    Log.d("OTPCheckIn", "Response: $responseBody") // Log the response
-                    generatedOTP = responseBody // Adjust this based on your server response
                     otpStatus = "OTP sent successfully!"
                     isOtpSent = true // Set OTP sent status to true
                 } else {
-                    otpStatus = "Failed to send OTP."
+                    otpStatus = "Failed to send OTP: ${response.message}"
                     Log.e("OTPCheckIn", "Error sending OTP: ${response.message}")
                 }
             }
         })
     }
+
+    // Function to verify OTP
     fun verifyOTP() {
-        // Ensure the request body is correctly formatted without a trailing comma
-        val requestBody = """{"otp": "$otp"}"""
+        isLoading = true // Start loading
+        val requestBody = """{"mobile": "$userPhoneNumber", "otp": "$otp"}"""
+            .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
-        // Log the OTP being verified for debugging purposes
-        Log.d("OTP Verification", "Verifying OTP: $otp")
-
-        // Create the request to verify the OTP
         val request = Request.Builder()
-            .url("$BASE_URL/verify-otp") // Ensure this is the correct endpoint
+            .url("$BASE_URL/verify-otp")
             .addHeader("Content-Type", "application/json")
-            .post(requestBody.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())) // Set the request body
+            .post(requestBody)
             .build()
 
-        // Execute the request
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                // Handle failure
-                otpStatus = "Failed to verify OTP: ${e.message}"
-                Log.e("OTP Verification", "Error: ${e.message}")
+                // Handle failure on the main thread
+                Handler(Looper.getMainLooper()).post {
+                    isLoading = false // Stop loading
+                    errorMessage = "Failed to verify OTP: ${e.message}" // Set error message
+                    showErrorDialog = true // Show error dialog
+                    Log.e("OTP Verification", "Error: ${e.message}")
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
-                // Get the response body
-                val responseBody = response.body?.string() ?: ""
-                Log.d("OTP Verification", "Response: $responseBody") // Log the full response
-
-                if (response.isSuccessful) {
-                    // Parse the JSON response
-                    val responseJson = JSONObject(responseBody)
-                    val message = responseJson.optString("message", "")
-
-                    // Check if the OTP was verified successfully
-                    if (message == "OTP verified successfully") {
-                        otpStatus = "OTP Verified Successfully!"
-                        navController.navigate("journey_details") // Navigate on success
+                val responseBody = response.body?.string()
+                Handler(Looper.getMainLooper()).post {
+                    isLoading = false // Stop loading
+                    if (response.isSuccessful) {
+                        try {
+                            if (responseBody.isNullOrEmpty()) {
+                                otpStatus = "Unexpected empty response from server"
+                            } else {
+                                try {
+                                    // Try parsing as JSON
+                                    val responseJson = JSONObject(responseBody)
+                                    val message = responseJson.optString("message", "")
+                                    if (message == "OTP verified successfully") {
+                                        otpStatus = "OTP Verified Successfully!"
+                                        showSuccessDialog = true // Show success dialog
+                                        navController.navigate("journey_details") // Navigate on success
+                                    } else {
+                                        otpStatus = "Invalid OTP"
+                                        errorMessage = "Invalid OTP" // Set error message
+                                        showErrorDialog = true // Show error dialog
+                                    }
+                                } catch (e: JSONException) {
+                                    // Handle plain string response
+                                    if (responseBody == "OTP verified successfully") {
+                                        otpStatus = "OTP Verified Successfully!"
+                                        showSuccessDialog = true // Show success dialog
+                                        navController.navigate("journey_details")
+                                    } else {
+                                        errorMessage = "Error parsing response: ${e.message}" // Set error message
+                                        showErrorDialog = true // Show error dialog
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            otpStatus = "Unexpected error: ${e.message}"
+                            Log.e("OTP Verification", "Error: ${e.message}")
+                        }
                     } else {
-                        otpStatus = "Invalid OTP" // Handle invalid OTP case
+                        errorMessage = "Invalid OTP: ${response.message}" // Set error message
+                        showErrorDialog = true // Show error dialog
+                        Log.e("OTP Verification", "Error: ${response.message}")
                     }
-                } else {
-                    // Handle unsuccessful response
-                    otpStatus = "Invalid OTP: ${response.message}"
-                    Log.e("OTP Verification", "Error: ${response.message}, Body: $responseBody") // Log error details
                 }
             }
         })
     }
+
     // Request Location
     LaunchedEffect(Unit) {
         if (ActivityCompat.checkSelfPermission(
@@ -301,9 +332,7 @@ fun OTPCheckInPage(navController: NavHostController) {
                 if (location != null) {
                     val latitude = location.latitude
                     val longitude = location.longitude
-
-                    // Simulate geofence check
-                    isGeofenceEntered = true // Replace with actual geofence logic
+                    isGeofenceEntered = true // Simulate geofence check
                     sendOTP(latitude, longitude) // Send OTP with fetched location
                 } else {
                     showLocationError = true
@@ -330,13 +359,11 @@ fun OTPCheckInPage(navController: NavHostController) {
             Text("Location permission is required or unable to fetch location.", color = Color.Red)
         } else if (isGeofenceEntered) {
             if (!isOtpSent) {
-                // Show the button to send OTP
-                Button(
-                    onClick = { /* This button is no longer needed since OTP is sent automatically */ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Sending OTP...", color = Color.White)
+                // Show loading indicator while sending OTP
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text("Sending OTP...")
                 }
             } else {
                 // Show OTP input field and verify button
@@ -358,7 +385,11 @@ fun OTPCheckInPage(navController: NavHostController) {
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Verify OTP", color = Color.White)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Verify OTP", color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -388,9 +419,87 @@ fun OTPCheckInPage(navController: NavHostController) {
         } else {
             Text("Please go to the nearest railway station and try again.")
         }
-    }
-}
 
+        // Back to Home Button
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { navController.navigate("pnr_list") }, // Navigate back to PNR List page
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Back to Home", color = Color.White)}
+    }
+
+    // Success Dialog
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuccessDialog = false },
+            title = { Text("Success", color = Color.White) },
+            text = {
+                Surface(
+                    modifier = Modifier.padding(16.dp), // Add padding around the content
+                    color = Color(0xFF808080), // Set background color
+                    shape = MaterialTheme.shapes.medium, // Set shape
+                ) {
+                    Text(
+                        "Check-in successfully ✅ !",
+                        color = Color.Black,
+                        modifier = Modifier.padding(16.dp) // Add padding inside the Surface
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showSuccessDialog = false // Dismiss the dialog first
+                    Handler(Looper.getMainLooper()).post {
+                        navController.navigate("journey_details") // Then navigate
+                    }
+                }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+// Error Dialog
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Error", color = Color.White) },
+            text = {
+                Surface(
+                    modifier = Modifier.padding(16.dp), // Add padding around the content
+                    color = Color.Gray, // Set background color to grey
+                    shape = MaterialTheme.shapes.medium, // Set shape
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Error, // Use an error icon
+                            contentDescription = "Error",
+                            tint = Color.Red,
+                            modifier = Modifier.size(24.dp) // Adjust size as needed
+                        )
+                        Text(
+                            " Check-in Unsuccessful", // Display the error message
+                            color = Color.Black,
+                            modifier = Modifier.padding(start = 8.dp, end = 16.dp) // Add padding inside the Surface
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showErrorDialog = false // Dismiss the dialog
+                }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+
+
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -425,13 +534,140 @@ fun TrainCheckInApp() {
             composable("signup") { SignupPage(navController) }
             composable("forgot_password") { ForgotPasswordPage(navController) }
             composable("pnr_list") { PNRListPage(navController) }
-            composable("biometric_check_in") { BiometricCheckInPage(navController) }
             composable("otp_check_in") { OTPCheckInPage(navController) }
-            composable("journey_details") { JourneyDetailsPage() }
+            composable("journey_details") { JourneyDetailsPage(navController) }
+            composable("biometric_check_in") { BiometricCheckInPage(navController) }
             composable("passenger_care") { PassengerCarePage(navController) }
+            composable("reset_password/{token}") { backStackEntry ->
+                val token = backStackEntry.arguments?.getString("token")
+                Reset_password(navController, token ?: "")
+            }
         }
     }
 }
+
+
+@Composable
+fun BiometricCheckInPage(navController: NavHostController) {
+    val context = LocalContext.current
+    var message by remember { mutableStateOf("") }
+    var isSuccessDialogVisible by remember { mutableStateOf(false) }
+    var isErrorDialogVisible by remember { mutableStateOf(false) }
+    var backgroundColor by remember { mutableStateOf(Color.White) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .background(backgroundColor),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Biometric Check-In",
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color(0xFFDC143C)
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+
+
+
+        TextButton(onClick = {
+            coroutineScope.launch {
+                Log.d("BiometricCheckInPage", "Context is: ${context::class.java.simpleName}")
+
+                val activity = context as? FragmentActivity
+                if (activity != null) {
+                    val biometricAuth = biometricAuthenticator(context)
+                    val status = biometricAuth.isBiometricAuthAvailable()
+
+                    if (status == BiometricAuthStatus.READY) {
+                        biometricAuth.promptBiometricAuth(
+                            title = "Biometric Authentication",
+                            subTitle = "Authenticate using your fingerprint",
+                            negativeButtonText = "Cancel",
+                            fragmentActivity = activity,
+                            onSuccess = {
+                                message = "Check-in Successful!"
+                                backgroundColor = Color.Gray
+                                isSuccessDialogVisible = true
+                            },
+                            onFailed = {
+                                message = "Authentication Failed. Please try again."
+                                isErrorDialogVisible = true
+                            },
+                            onError = { errorCode, errorString ->
+                                message = "Error: $errorString (Code: $errorCode)"
+                                isErrorDialogVisible = true
+                            }
+                        )
+                    } else {
+                        message = "Biometric authentication not available: ${status.message}"
+                    }
+                } else {
+                    message = "Error: Biometric authentication requires a FragmentActivity context."
+                }
+            }
+        }) {
+            Text(text = "Authenticate with Biometrics")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = message)
+
+        // Success Dialog
+        if (isSuccessDialogVisible) {
+            AlertDialog(
+                onDismissRequest = { isSuccessDialogVisible = false },
+                title = { Text("Success") },
+                text = { Text("Check-in successfully ✅ !") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        isSuccessDialogVisible = false
+                        navController.navigate("journey_details")
+                    }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+        //Error Dialog
+            if (isErrorDialogVisible) {
+                AlertDialog(
+                    onDismissRequest = { isErrorDialogVisible = false },
+                    title = { Text("Error") },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Filled.Close, // Use a close or error icon
+                                contentDescription = "Error",
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp) // Adjust size as needed
+                            )
+                            Text(
+                                text = " Check-in Unsuccessful",
+                                color = Color.Red,
+                                fontSize = 20.sp // Adjust font size as needed
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            isErrorDialogVisible = false
+                            // No navigation here, just close the dialog
+                        }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+    }
+}
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -455,7 +691,7 @@ fun CustomTopAppBar(title: String, navController: NavHostController) {
     )
 }
 
-@SuppressLint("QueryPermissionsNeeded")
+@SuppressLint("QueryPermissionsNeeded", "UseKtx")
 @Composable
 fun PassengerCarePage(navController: NavHostController) {
     val context = LocalContext.current
@@ -474,7 +710,7 @@ fun PassengerCarePage(navController: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                "Contact Us: +1234567890",
+                "Contact Us: 8667744339",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFFDC143C)
             )
@@ -488,22 +724,25 @@ fun PassengerCarePage(navController: NavHostController) {
 
             Button(
                 onClick = {
-                    val contactNumber = "+1234567890"
-                    val whatsappUrl = "https://wa.me/${contactNumber.removePrefix("+")}"
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(whatsappUrl))
-                    if (intent.resolveActivity(context.packageManager) != null) {
+                    val contactNumber = "918667744339" // Ensure the correct country code without "+"
+                    val whatsappUrl = "https://wa.me/$contactNumber"
+
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = whatsappUrl.toUri()
+                        setPackage("com.whatsapp") // This ensures WhatsApp opens directly
+                    }
+
+                    try {
                         context.startActivity(intent)
-                    } else {
+                    } catch (e: ActivityNotFoundException) {
                         Toast.makeText(context, "WhatsApp is not installed.", Toast.LENGTH_SHORT).show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
+                Image(
                     painter = painterResource(id = R.drawable.ic_whatsapp),
                     contentDescription = "WhatsApp Icon",
-                    tint = Color.Green,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -515,6 +754,7 @@ fun PassengerCarePage(navController: NavHostController) {
     }
 }
 
+
 @Composable
 fun ForgotPasswordPage(navController: NavHostController) {
     var email by remember { mutableStateOf("") }
@@ -522,7 +762,11 @@ fun ForgotPasswordPage(navController: NavHostController) {
     var emailError by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
-    val client = OkHttpClient()
+    val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     fun sendPasswordResetEmail() {
         if (email.isEmpty()) {
@@ -546,26 +790,36 @@ fun ForgotPasswordPage(navController: NavHostController) {
             .post(requestBody)
             .build()
 
-        // Make the network call
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                isLoading = false // Stop loading
-                message = "Failed to send email: ${e.message}"
-                Log.e("ForgotPassword", "Error: ${e.message}") // Log the error
-            }
-
-            override fun onResponse(call: Call, response: Response) {
+        // Make the network call using Coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = client.newCall(request).execute()
                 isLoading = false // Stop loading
                 if (response.isSuccessful) {
-                    // Assuming the response contains a token for the reset
                     val token = response.body?.string() // Adjust based on your API response
-                    navController.navigate("reset_password/$token") // Navigate to Reset Password page
-                    message = "Password reset link has been sent to your email."
+                    if (token != null) {
+                        withContext(Dispatchers.Main) {
+                            navController.navigate("reset_password/$token") // Ensure this route exists in your navigation graph
+                            message = "Password reset link has been sent to your email."
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            message = "Error: No token received."
+                        }
+                    }
                 } else {
-                    message = "Error: ${response.message}"
+                    withContext(Dispatchers.Main) {
+                        message = "Error: ${response.message}"
+                    }
+                }
+            } catch (e: IOException) {
+                isLoading = false // Stop loading
+                withContext(Dispatchers.Main) {
+                    message = "Failed to send email: ${e.message}"
+                    Log.e("ForgotPassword", "Error: ${e.message}") // Log the error
                 }
             }
-        })
+        }
     }
     // UI Layout
     Column(
@@ -602,7 +856,7 @@ fun ForgotPasswordPage(navController: NavHostController) {
 
         Button(
             onClick = { sendPasswordResetEmail() },
-            colors = ButtonDefaults.buttonColors (containerColor = Color(0xFFDC143C)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C)),
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isLoading) {
@@ -664,10 +918,14 @@ fun Reset_password(navController: NavHostController, token: String) {
             }
 
             override fun onResponse(call: Call, response: Response) {
-                message = if (response.isSuccessful) {
-                    "Password has been reset successfully!"
+                if (response.isSuccessful) {
+                    message = "Password has been reset successfully!"
+                    // Navigate to the login page after a successful password reset
+                    navController.navigate("login") { // Adjust the route as needed
+                        popUpTo("reset_password") { inclusive = true } // Clear the back stack
+                    }
                 } else {
-                    "Error: ${response.message}"
+                    message = "Error: ${response.message}"
                 }
             }
         })
@@ -794,26 +1052,71 @@ fun PasswordField(
     )
 }
 
+
+
 @Composable
 fun LoginPage(navController: NavHostController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var selectedLanguage by remember { mutableStateOf("English") }
+    var expanded by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFEFEFEF))
     ) {
+        // Enable vertical scrolling
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()), // Add vertical scroll
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Language Dropdown Menu
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clickable { expanded = true }
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(selectedLanguage, fontSize = 16.sp, color = Color.Black)
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Dropdown Arrow",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    val languages = listOf("English", "தமிழ்", "हिन्दी")
+                    languages.forEach { language ->
+                        DropdownMenuItem(
+                            text = { Text(text = language) },
+                            onClick = {
+                                selectedLanguage = language
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -823,8 +1126,7 @@ fun LoginPage(navController: NavHostController) {
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(24.dp),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -853,11 +1155,12 @@ fun LoginPage(navController: NavHostController) {
 
                     Button(
                         onClick = {
-                            if (isLoading) return@Button // Prevent multiple clicks
+                            if (isLoading) return@Button
                             isLoading = true
                             errorMessage = ""
+
                             coroutineScope.launch {
-                                loginUser (navController, email, password) { message ->
+                                loginUser(navController, email, password) { message ->
                                     isLoading = false
                                     errorMessage = message
                                 }
@@ -866,7 +1169,7 @@ fun LoginPage(navController: NavHostController) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C)),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = !isLoading // Disable button while loading
+                        enabled = !isLoading
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -874,14 +1177,49 @@ fun LoginPage(navController: NavHostController) {
                             Text("Login", color = Color.White)
                         }
                     }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (errorMessage.isNotEmpty()) {
-                        Text(errorMessage, color = Color.Red)
+                    // Biometric Authentication Button
+                    TextButton(
+                        onClick = {
+                            val biometricAuth = biometricAuthenticator(context)
+                            val status = biometricAuth.isBiometricAuthAvailable()
+
+                            if (status == BiometricAuthStatus.READY) {
+                                biometricAuth.promptBiometricAuth(
+                                    title = "Biometric Authentication",
+                                    subTitle = "Authenticate using your fingerprint",
+                                    negativeButtonText = "Cancel",
+                                    fragmentActivity = context as FragmentActivity,
+                                    onSuccess = {
+                                        navController.navigate("pnr_list") {
+                                            popUpTo("login") { inclusive = true }
+                                        }
+                                    },
+                                    onFailed = {
+                                        errorMessage = "Authentication Failed. Try again."
+                                    },
+                                    onError = { errorCode, errorString ->
+                                        errorMessage = "Error: $errorString (Code: $errorCode)"
+                                    }
+                                )
+                            } else {
+                                errorMessage = "Biometric authentication not available: ${status.message}"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_fingerprint),
+                            contentDescription = "Fingerprint Icon",
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Create Account and Forgot Password Links
                     Text(
                         text = "Create Account",
                         color = Color(0xFFDC143C),
@@ -890,8 +1228,6 @@ fun LoginPage(navController: NavHostController) {
                             .padding(8.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     Text(
                         text = "Forgot Password?",
                         color = Color(0xFFDC143C),
@@ -899,13 +1235,20 @@ fun LoginPage(navController: NavHostController) {
                             .clickable { navController.navigate("forgot_password") }
                             .padding(8.dp)
                     )
+
+                    // Display error message if any
+                    if (errorMessage.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(errorMessage, color = Color.Red)
+                    }
                 }
             }
         }
     }
 }
 
-suspend fun loginUser(
+
+suspend fun loginUser (
     navController: NavHostController,
     email: String,
     password: String,
@@ -939,25 +1282,21 @@ suspend fun loginUser(
                             }
                         }
                     } else {
-                        withContext(Dispatchers.Main) {
-                            onErrorMessage("Unexpected response from server.")
-                        }
+                        onErrorMessage("Login failed. Please try again.")
                     }
                 } else {
-                    withContext(Dispatchers.Main) {
-                        onErrorMessage("Login failed: ${response.message}")
-                    }
+                    onErrorMessage("Error: ${response.message}")
                 }
             }
         } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                onErrorMessage("Network error: ${e.localizedMessage}")
-            }
+            onErrorMessage("Exception: ${e.message}")
         }
     } else {
         onErrorMessage("Please enter a valid email and password.")
     }
 }
+
+
 
 @Composable
 fun SignupPage(navController: NavHostController) {
@@ -968,6 +1307,8 @@ fun SignupPage(navController: NavHostController) {
     var confirmPassword by remember { mutableStateOf("") }
     var aadhaarNumber by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+
+    LocalContext.current
 
     fun validateAadhaar(aadhaar: String): Boolean {
         return aadhaar.matches(Regex("^[0-9]{12}$"))
@@ -1001,6 +1342,8 @@ fun SignupPage(navController: NavHostController) {
         Log.d("Signup", "Name: $name, Email: $email, Mobile: $mobile, Aadhaar: $aadhaarNumber, Password: $password, Confirm Password: $confirmPassword")
 
         if (validateSignup()) {
+
+
             val client = OkHttpClient()
             val requestBody = """
         {
@@ -1286,16 +1629,25 @@ fun DatePickerDialog(
     val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
+    // Get the current date
+    val currentYear = calendar.get(Calendar.YEAR)
+    val currentMonth = calendar.get(Calendar.MONTH)
+    val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
+
+    // Create the DatePickerDialog
     val datePickerDialog = android.app.DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
             val selectedDate = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth)
             onDateSelected(selectedDate)
         },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
+        currentYear,
+        currentMonth,
+        currentDay
     )
+
+    // Set the minimum date to today
+    datePickerDialog.datePicker.minDate = calendar.timeInMillis
 
     datePickerDialog.setOnDismissListener { onDismissRequest() }
     datePickerDialog.show()
@@ -1310,141 +1662,29 @@ fun PNRItem(pnr: String, onClick: () -> Unit) {
             .padding(vertical = 8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C))
     ) {
-        Text(pnr, color = Color.White)
+        Text("PNR NO. $pnr", color = Color.White)
     }
-}
-
-@Composable
-fun BiometricCheckInPage(navController: NavHostController) {
-    var authenticationState by remember { mutableStateOf<AuthenticationState>(AuthenticationState.Pending) }
-
-    val context = LocalContext.current
-
-    // Check if biometric authentication is supported
-    if (!isBiometricSupported(context)) {
-        Text("Biometric authentication is not supported on this device.", color = Color.Red)
-        return
-    }
-
-    // Verify context is a FragmentActivity
-    val activity = context as? FragmentActivity
-    if (activity==null) {
-        Text("Biometric authentication is not supported in this context.", color = Color.Red)
-        return
-    }
-
-    val executor = remember { ContextCompat.getMainExecutor(context) }
-    val biometricPrompt = remember {
-        BiometricPrompt(
-            activity,
-            executor,
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    authenticationState = AuthenticationState.Success
-                    navController.navigate("journey_details") // Navigate on success
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    authenticationState = AuthenticationState.Failed
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    authenticationState = AuthenticationState.Error(errString.toString())
-                }
-            }
-        )
-    }
-
-    val promptInfo = remember {
-        BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Biometric Authentication")
-            .setSubtitle("Log in using your fingerprint or face")
-            .setNegativeButtonText("Cancel")
-            .setConfirmationRequired(true) // Require confirmation for biometric authentication
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG) // Allow strong biometric authentication
-            .build()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("Biometric Check-In", style = MaterialTheme.typography.headlineLarge)
-        Spacer(modifier = Modifier.height(32.dp))
-
-        when (authenticationState) {
-            is AuthenticationState.Pending -> {
-                Text("Biometric Authentication Pending", color = Color.Gray)
-                Button(
-                    onClick = { biometricPrompt.authenticate(promptInfo) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C))
-                ) {
-                    Text("Start Authentication", color = Color.White)
-                }
-            }
-            is AuthenticationState.Success -> {
-                Text("Authentication Succeeded!", color = Color.Green)
-            }
-            is AuthenticationState.Failed -> {
-                Text("Authentication Failed. Please try again.", color = Color.Red)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { biometricPrompt.authenticate(promptInfo) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC143C))
-                ) {
-                    Text("Retry Authentication", color = Color.White)
-                }
-            }
-            is AuthenticationState.Error -> {
-                val errorMessage = (authenticationState as AuthenticationState.Error).message
-                Text("Error: $errorMessage", color = Color.Red)
-            }
-
-            else -> {}
-        }
-    }
-}
-
-// Function to check if biometric authentication is supported
-fun isBiometricSupported(context: Context): Boolean {
-    val biometricManager = BiometricManager.from(context)
-    val result = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-    return result == BiometricManager.BIOMETRIC_SUCCESS
-}
-
-// Authentication State for Tracking Biometric Status
-sealed class AuthenticationState {
-    data object Pending : AuthenticationState()
-    data object Success : AuthenticationState()
-    data object Failed : AuthenticationState()
-    data class Error(val message: String) : AuthenticationState()
 }
 
 data class Journey(
-    val pnr: String,
+    val trainName: String,
     val trainNumber: String,
     val departure: String,
     val arrival: String,
     val date: String,
-    val status: String
+    val status: String,
+    val platformNumber: String // Added platform number
 )
 
 @Composable
-fun JourneyDetailsPage() {
-    val journeys by remember { mutableStateOf(listOf<Journey>()) }
-    val loading by remember { mutableStateOf(true) }
-    val errorMessage by remember { mutableStateOf("") }
+fun JourneyDetailsPage(navController: NavHostController) {
+    val journeys = remember { mutableStateOf(listOf<Journey>()) }
+    val loading = remember { mutableStateOf(true) }
+    val errorMessage = remember { mutableStateOf("") }
 
-    val userId=""
-
-    LaunchedEffect(userId) {
-        fetchJourneyDetails(userId)
+    LaunchedEffect(Unit) {
+        // Simulate fetching dummy data
+        fetchDummyJourneyDetails(journeys, loading, errorMessage)
     }
 
     Column(
@@ -1457,43 +1697,25 @@ fun JourneyDetailsPage() {
         Text("Journey Details", style = MaterialTheme.typography.titleLarge, color = Color(0xFFDC143C))
         Spacer(modifier = Modifier.height(32.dp))
 
-        if (loading) {
+        if (loading.value) {
             CircularProgressIndicator()
-        } else if (errorMessage.isNotEmpty()) {
-            Text(text = errorMessage, color = Color.Red)
-        } else if (journeys.isEmpty()) {
+        } else if (errorMessage.value.isNotEmpty()) {
+            Text(text = errorMessage.value, color = Color.Red)
+        } else if (journeys.value.isEmpty()) {
             Text("Your journey details will be displayed here.")
         } else {
             LazyColumn {
-                items (journeys) { journey ->
+                items(journeys.value) { journey ->
                     JourneyItem(journey)
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { navController.navigate("pnr_List") }) {
+            Text("Back to Home")
+        }
     }
-}
-
-fun fetchJourneyDetails(userId: String) {
-    val client = OkHttpClient()
-    val request = Request.Builder()
-        .url("$BASE_URL/fetch-journeys/$userId")
-        .get()
-        .build()
-
-    client.newCall(request).enqueue(object : Callback {
-        override fun onFailure(call: Call, e: IOException) {
-            Log.e("JourneyDetails", "Error: ${e.message}")
-        }
-
-        override fun onResponse(call: Call, response: Response) {
-            if (response.isSuccessful) {
-                response.body?.string()
-                // Parse the response and update the state
-            } else {
-                Log.e("JourneyDetails", "Error: ${response.message}")
-            }
-        }
-    })
 }
 
 @Composable
@@ -1505,15 +1727,62 @@ fun JourneyItem(journey: Journey) {
         elevation = CardDefaults.elevatedCardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("PNR: ${journey.pnr}", style = MaterialTheme.typography.titleMedium)
-            Text("Train Number: ${journey.trainNumber}")
-            Text("Departure: ${journey.departure}")
-            Text("Arrival: ${journey.arrival}")
-            Text("Date: ${journey.date}")
-            Text("Status: ${journey.status}")
+            // Display each detail in a row-like format
+            DetailRow(label = "Train Name:", value = journey.trainName)
+            DetailRow(label = "Train Number:", value = journey.trainNumber)
+            DetailRow(label = "Departure:", value = journey.departure)
+            DetailRow(label = "Arrival:", value = journey.arrival)
+            DetailRow(label = "Date:", value = journey.date)
+            DetailRow(label = "Status:", value = journey.status)
+            DetailRow(label = "Platform Number:", value = journey.platformNumber)
         }
     }
 }
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+fun fetchDummyJourneyDetails(
+    journeys: MutableState<List<Journey>>,
+    loading: MutableState<Boolean>,
+    errorMessage: MutableState<String>
+) {
+    // Simulate a delay to mimic network call
+    kotlinx.coroutines.GlobalScope.launch {
+        delay(2000) // 2-second delay
+        try {
+            // Add dummy data with platform number
+            journeys.value = listOf(
+                Journey(
+                    trainName = "Maharani Express",
+                    trainNumber = "12433",
+                    departure = "New Delhi",
+                    arrival = "Mumbai Central",
+                    date = "2025-01-25",
+                    status = "On-time",
+                    platformNumber = "5" // Added platform number
+                )
+            )
+            loading.value = false
+        } catch (e: Exception) {
+            loading.value = false
+            errorMessage.value = "Failed to load journey details: ${e.message}"
+        }
+    }
+}
+
+
 
 @Preview(showBackground = true)
 @Composable

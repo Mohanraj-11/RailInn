@@ -9,7 +9,7 @@ plugins {
 
 
 
-val kotlinVersion = "2.1.0"
+val kotlinVersion = "2.0.21"
 
 android {
     namespace = "com.example.traincheckinapp"
@@ -44,11 +44,8 @@ android {
     buildFeatures {
         compose = true
     }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+
+
 
 }
 
@@ -92,6 +89,21 @@ dependencies {
     implementation(libs.firebase.auth) // Check for the latest version
     implementation(platform(libs.firebase.bom))
     implementation(libs.google.firebase.analytics)
+    implementation (libs.androidx.biometric.v110)
+    implementation (libs.androidx.biometric) // Or the latest version
+    implementation (libs.androidx.appcompat.v131)
+    implementation (libs.androidx.security.crypto)
+    implementation (libs.ui.vversion)
+    implementation (libs.androidx.material3.vversion) // For Material 3
+    implementation (libs.ui.tooling)
+    implementation (libs.androidx.lifecycle.runtime.ktx.vversion)
+    implementation (libs.androidx.activity.compose.vversion)
+
+
+
+    implementation (libs.androidx.activity.ktx.v170)
+    implementation (libs.androidx.runtime.livedata)
+
 
 
     // Testing libraries

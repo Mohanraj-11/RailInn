@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorAccent">#DC143C</color>
+    <color name="crimson">#DC143C</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">TrainCheckInApp</string>
+    <string name="authenticate">Authenticate</string>
+    <string name="base_url">http://192.168.0.101:8080</string>
+    <string name="biometric_check_in">Biometric Check-In</string>
+    <string name="gcm_defaultSenderId" translatable="false">5680075517</string>
+    <string name="google_api_key" translatable="false">AIzaSyCWYlK4O0y10A_ohXfNJu-rWZa8QTJ95gM</string>
+    <string name="google_app_id" translatable="false">1:5680075517:android:8a0d1befb9621a80896494</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyCWYlK4O0y10A_ohXfNJu-rWZa8QTJ95gM</string>
+    <string name="google_storage_bucket" translatable="false">rail-inn-26d87.firebasestorage.app</string>
+    <string name="project_id" translatable="false">rail-inn-26d87</string>
+    <style name="Theme.TrainCheckInApp" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>

@@ -15,6 +15,8 @@ interface ApiService {
     @POST("/send-otp")
     fun sendOtp(@Body request: OtpRequest): Call<ResponseBody>
 
+
+
     @POST("/journey-details")
     fun fetchJourneyDetails(@Body request: JourneyDetailsRequest): Call<ResponseBody>
 }

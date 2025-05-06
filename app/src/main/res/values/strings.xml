@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">TrainCheckInApp</string>
     <string name="base_url">http://192.168.0.101:8080</string>
+    <string name="biometric_check_in">Biometric Check-In</string>
+    <string name="authenticate">Authenticate</string>
 </resources>
 
 
