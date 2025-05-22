@@ -1,8 +1,8 @@
-# Train Check-In App
+# Rail-Inn
 
 ## Overview
 
-The Train Check-In App is an Android application that allows users to check in for their train journeys using OTP (One-Time Password) and biometric authentication. The app provides a user-friendly interface for managing train bookings, checking journey details, and contacting customer support.
+The Rail-Inn App is an Android application that allows users to check in for their train journeys using OTP (One-Time Password) and biometric authentication. The app provides a user-friendly interface for managing train bookings, checking journey details, and contacting customer support.
 
 ## Features
 
